@@ -269,6 +269,13 @@ this.AppConstants = Object.freeze({
   false,
 #endif
 
+  MOZ_B2G_REMOTECONTROLSERVICE:
+#ifdef MOZ_B2G_REMOTECONTROLSERVICE
+  true,
+#else
+  false,
+#endif
+
   DLL_PREFIX: "@DLL_PREFIX@",
   DLL_SUFFIX: "@DLL_SUFFIX@",
 

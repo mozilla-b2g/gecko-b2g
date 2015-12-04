@@ -30,5 +30,13 @@ def gonk_toolchain_prefix(value):
 
 imply_option('--with-toolchain-prefix', gonk_toolchain_prefix)
 
+option('--disable-remote-control-service', help='Set compile flags necessary for Remote Control Service on B2G')
+
+@depends('--disable-remote-control-service')
+def remote_control_service(value):
+    return bool(value)
+
+set_config('MOZ_B2G_REMOTECONTROLSERVICE', remote_control_service)
+set_define('MOZ_B2G_REMOTECONTROLSERVICE', remote_control_service)
 
 include('common.configure')
