@@ -88,6 +88,34 @@ const EVENT_HANDLER_STATUS = {
 let nextConnectionId = 0; // Used for tracking existing connections
 let commandJSSandbox = null; // Sandbox runs remote_command.js
 
+function PairingData() {
+  // Information for saving paired devices
+  function PairingInfo(aAesKey, aHmacKey) {
+    this.aesKey = aAesKey;
+    this.hmacKey = aHmacKey;
+  }
+
+  // Return the stored paired devices information.
+  // If nothing exist, then return a empty object
+  function get() {
+    return (Services.prefs.getPrefType(REMOTECONTROL_PREF_DEVICES)) ?
+      JSON.parse(Services.prefs.getCharPref(REMOTECONTROL_PREF_DEVICES)) : {};
+  }
+
+  // Save the paired devices information
+  function save(aData) {
+    let data = JSON.stringify(aData);
+    Services.prefs.setCharPref(REMOTECONTROL_PREF_DEVICES, data);
+    // This preference is consulted during startup.
+    Services.prefs.savePrefFile(null);
+  }
+
+  return {
+    getPairedDevice: get,
+    flushPairedDevice: save,
+  }
+}
+
 this.RemoteControlService = {
   // Remote Control status
   _serverStatus: SERVER_STATUS.STOPPED,
@@ -107,6 +135,7 @@ this.RemoteControlService = {
   // JPAKE pairing
   _pin: null,
   _pairedDevices: {},
+  _pairingData: new PairingData(),
 
   // PUBLIC API
   // Start TLS socket server.
@@ -186,7 +215,7 @@ this.RemoteControlService = {
       hmacKey: aHMAC256Key,
     };
 
-    Services.prefs.setCharPref(REMOTECONTROL_PREF_DEVICES, JSON.stringify(this._pairedDevices));
+    this._pairingData.flushPairedDevice(this._pairedDevices);
 
     return uuidString;
   },
@@ -205,7 +234,8 @@ this.RemoteControlService = {
         aesKey: aAES256Key,
         hmacKey: aHMAC256Key,
       };
-      Services.prefs.setCharPref(REMOTECONTROL_PREF_DEVICES, JSON.stringify(this._pairedDevices));
+
+      this._pairingData.flushPairedDevice(this._pairedDevices);
     }
   },
 
@@ -337,15 +367,7 @@ this.RemoteControlService = {
     SystemAppProxy._sendCustomEvent(REMOTE_CONTROL_EVENT, {action: "request-control-mode"});
 
     // Read already stored devices
-    try {
-      this._pairedDevices = JSON.parse(Services.prefs.getCharPref(REMOTECONTROL_PREF_DEVICES));
-    } catch(e) {
-      DEBUG && debug ("Parse stored devices error: " + e);
-
-      // Empty paired devices
-      this._pairedDevices = {};
-      Services.prefs.setCharPref(REMOTECONTROL_PREF_DEVICES, JSON.stringify(this._pairedDevices));
-    }
+    this._pairedDevices = this._pairingData.getPairedDevice();
 
     // Internal functions export to remote_command.js
     this.exportFunctions = {
